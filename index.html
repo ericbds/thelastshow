@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The Last Show — A Horror Job Simulator</title>
+  <meta name="description" content="You are a substitute projectionist covering a late-night screening at a dying 1950s movie theatre. The equipment is old and failing. Something is in the building with you. Keep the movie running." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Special+Elite&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --black: #0a0805;
+      --deep: #110e09;
+      --warm-dark: #1a1510;
+      --amber: #c8882a;
+      --amber-dim: #8a5c18;
+      --amber-glow: #e8a840;
+      --cream: #e8dfc8;
+      --cream-dim: #b8ad98;
+      --red: #8b1a1a;
+      --red-bright: #c0392b;
+      --flicker-speed: 0.08s;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--black);
+      color: var(--cream);
+      font-family: 'Crimson Text', Georgia, serif;
+      font-size: 18px;
+      line-height: 1.7;
+      overflow-x: hidden;
+      cursor: default;
+    }
+
+    /* FILM GRAIN OVERLAY */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.08'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 9999;
+      opacity: 0.35;
+      mix-blend-mode: overlay;
+    }
+
+    /* VIGNETTE */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.7) 100%);
+      pointer-events: none;
+      z-index: 9998;
+    }
+
+    /* ─── HEADER / HERO ─── */
+    header {
+      position: relative;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 4rem 2rem;
+      overflow: hidden;
+    }
+
+    /* Projector beam effect */
+    header::before {
+      content: '';
+      position: absolute;
+      top: -10%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 3px;
+      height: 120%;
+      background: linear-gradient(to bottom,
+        rgba(200, 136, 42, 0.8) 0%,
+        rgba(200, 136, 42, 0.15) 40%,
+        transparent 100%);
+      filter: blur(8px);
+      animation: beam-flicker 4s ease-in-out infinite;
+    }
+
+    /* Projector beam spread */
+    header::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0;
+      height: 0;
+      border-left: 60vw solid transparent;
+      border-right: 60vw solid transparent;
+      border-top: 100vh solid rgba(200, 136, 42, 0.03);
+      pointer-events: none;
+    }
+
+    @keyframes beam-flicker {
+      0%, 100% { opacity: 1; }
+      92% { opacity: 1; }
+      93% { opacity: 0.3; }
+      94% { opacity: 1; }
+      97% { opacity: 0.7; }
+      98% { opacity: 1; }
+    }
+
+    .film-perfs {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 48px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-around;
+      padding: 1rem 0;
+      opacity: 0.15;
+    }
+    .film-perfs.left { left: 0; }
+    .film-perfs.right { right: 0; }
+
+    .perf {
+      width: 22px;
+      height: 16px;
+      background: transparent;
+      border: 2px solid var(--cream-dim);
+      border-radius: 3px;
+      margin: 0 auto;
+    }
+
+    .studio-tag {
+      font-family: 'Special Elite', monospace;
+      font-size: 11px;
+      letter-spacing: 0.3em;
+      color: var(--amber-dim);
+      text-transform: uppercase;
+      margin-bottom: 3rem;
+      animation: fade-in 2s ease both;
+    }
+
+    .hero-title {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: clamp(4rem, 12vw, 9rem);
+      font-weight: 900;
+      line-height: 0.9;
+      letter-spacing: -0.02em;
+      color: var(--cream);
+      text-shadow:
+        0 0 80px rgba(200, 136, 42, 0.4),
+        0 0 160px rgba(200, 136, 42, 0.1);
+      animation: title-in 2s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both, flicker-title 8s ease-in-out 3s infinite;
+      position: relative;
+    }
+
+    .hero-title span {
+      display: block;
+      font-style: italic;
+      font-size: 0.42em;
+      font-weight: 400;
+      letter-spacing: 0.15em;
+      color: var(--amber);
+      margin-bottom: 0.3em;
+    }
+
+    @keyframes title-in {
+      from { opacity: 0; transform: translateY(30px); filter: blur(10px); }
+      to { opacity: 1; transform: translateY(0); filter: blur(0); }
+    }
+
+    @keyframes flicker-title {
+      0%, 100% { opacity: 1; }
+      94% { opacity: 1; }
+      95% { opacity: 0.6; }
+      95.5% { opacity: 1; }
+      98% { opacity: 0.85; }
+      99% { opacity: 1; }
+    }
+
+    .hero-divider {
+      width: 120px;
+      height: 1px;
+      background: linear-gradient(to right, transparent, var(--amber), transparent);
+      margin: 2.5rem auto;
+      animation: fade-in 2s ease 1s both;
+    }
+
+    .hero-logline {
+      font-family: 'Crimson Text', Georgia, serif;
+      font-style: italic;
+      font-size: clamp(1.1rem, 2.5vw, 1.5rem);
+      color: var(--cream-dim);
+      max-width: 620px;
+      line-height: 1.6;
+      animation: fade-in 2s ease 1.2s both;
+    }
+
+    .hero-meta {
+      margin-top: 3rem;
+      display: flex;
+      gap: 2rem;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      animation: fade-in 2s ease 1.6s both;
+    }
+
+    .meta-badge {
+      font-family: 'Special Elite', monospace;
+      font-size: 11px;
+      letter-spacing: 0.2em;
+      color: var(--amber-dim);
+      text-transform: uppercase;
+      border: 1px solid var(--amber-dim);
+      padding: 0.4em 1em;
+    }
+
+    .cta-group {
+      margin-top: 3.5rem;
+      display: flex;
+      gap: 1.2rem;
+      flex-wrap: wrap;
+      justify-content: center;
+      animation: fade-in 2s ease 2s both;
+    }
+
+    .btn {
+      font-family: 'Special Elite', monospace;
+      font-size: 12px;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      text-decoration: none;
+      padding: 1em 2.2em;
+      border: 1px solid;
+      transition: all 0.3s ease;
+      cursor: pointer;
+      display: inline-block;
+    }
+
+    .btn-primary {
+      background: var(--amber);
+      color: var(--black);
+      border-color: var(--amber);
+    }
+    .btn-primary:hover {
+      background: var(--amber-glow);
+      border-color: var(--amber-glow);
+      box-shadow: 0 0 30px rgba(200, 136, 42, 0.5);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--cream-dim);
+      border-color: rgba(184, 173, 152, 0.3);
+    }
+    .btn-secondary:hover {
+      color: var(--cream);
+      border-color: var(--cream-dim);
+    }
+
+    .scroll-hint {
+      position: absolute;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: 'Special Elite', monospace;
+      font-size: 10px;
+      letter-spacing: 0.3em;
+      color: var(--amber-dim);
+      text-transform: uppercase;
+      animation: fade-in 3s ease 3s both, bob 2s ease-in-out 4s infinite;
+    }
+    @keyframes bob {
+      0%, 100% { transform: translateX(-50%) translateY(0); }
+      50% { transform: translateX(-50%) translateY(6px); }
+    }
+
+    @keyframes fade-in {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ─── SECTIONS ─── */
+    section {
+      position: relative;
+      padding: 7rem 2rem;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .section-label {
+      font-family: 'Special Elite', monospace;
+      font-size: 10px;
+      letter-spacing: 0.4em;
+      color: var(--amber);
+      text-transform: uppercase;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(to right, var(--amber-dim), transparent);
+      max-width: 80px;
+    }
+
+    h2 {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      font-weight: 700;
+      line-height: 1.1;
+      color: var(--cream);
+      margin-bottom: 2rem;
+    }
+
+    h2 em {
+      color: var(--amber);
+      font-style: italic;
+    }
+
+    p {
+      color: var(--cream-dim);
+      margin-bottom: 1.2rem;
+      max-width: 680px;
+    }
+
+    /* ─── DIVIDER LINE ─── */
+    .divider {
+      width: 100%;
+      height: 1px;
+      background: linear-gradient(to right, transparent, rgba(200,136,42,0.2), transparent);
+      margin: 0 auto;
+    }
+
+    /* ─── ABOUT ─── */
+    .about-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 5rem;
+      align-items: start;
+    }
+
+    @media (max-width: 700px) {
+      .about-grid { grid-template-columns: 1fr; gap: 3rem; }
+    }
+
+    /* ─── MECHANICS ─── */
+    .mechanics-section {
+      background: var(--deep);
+      max-width: 100%;
+      padding: 7rem 2rem;
+      border-top: 1px solid rgba(200, 136, 42, 0.1);
+      border-bottom: 1px solid rgba(200, 136, 42, 0.1);
+    }
+
+    .mechanics-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .mechanics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 2.5rem;
+      margin-top: 4rem;
+    }
+
+    .mechanic-card {
+      border: 1px solid rgba(200, 136, 42, 0.15);
+      padding: 2rem;
+      position: relative;
+      transition: border-color 0.3s ease;
+      background: rgba(200, 136, 42, 0.02);
+    }
+    .mechanic-card:hover {
+      border-color: rgba(200, 136, 42, 0.4);
+      background: rgba(200, 136, 42, 0.04);
+    }
+
+    .mechanic-number {
+      font-family: 'Playfair Display', serif;
+      font-size: 3.5rem;
+      font-weight: 900;
+      color: rgba(200, 136, 42, 0.12);
+      line-height: 1;
+      margin-bottom: 0.5rem;
+      font-style: italic;
+    }
+
+    .mechanic-title {
+      font-family: 'Special Elite', monospace;
+      font-size: 12px;
+      letter-spacing: 0.2em;
+      color: var(--amber);
+      text-transform: uppercase;
+      margin-bottom: 0.8rem;
+    }
+
+    .mechanic-desc {
+      font-size: 16px;
+      color: var(--cream-dim);
+      line-height: 1.6;
+      margin: 0;
+    }
+
+    /* ─── CLOCK ─── */
+    .clock-section {
+      text-align: center;
+    }
+
+    .clock-display {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(4rem, 15vw, 10rem);
+      font-weight: 900;
+      color: var(--amber);
+      letter-spacing: -0.03em;
+      text-shadow: 0 0 60px rgba(200,136,42,0.4);
+      margin: 3rem 0;
+      font-style: italic;
+      animation: clock-pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes clock-pulse {
+      0%, 100% { text-shadow: 0 0 60px rgba(200,136,42,0.4); }
+      50% { text-shadow: 0 0 80px rgba(200,136,42,0.7), 0 0 120px rgba(200,136,42,0.2); }
+    }
+
+    .timeline {
+      display: flex;
+      justify-content: center;
+      gap: 0;
+      margin-top: 4rem;
+      flex-wrap: wrap;
+    }
+
+    .timeline-item {
+      flex: 1;
+      min-width: 180px;
+      max-width: 240px;
+      padding: 1.5rem;
+      border-left: 1px solid rgba(200,136,42,0.15);
+      text-align: left;
+      transition: background 0.3s;
+    }
+    .timeline-item:hover { background: rgba(200,136,42,0.03); }
+    .timeline-item:first-child { border-left: none; }
+
+    .timeline-time {
+      font-family: 'Special Elite', monospace;
+      font-size: 11px;
+      letter-spacing: 0.2em;
+      color: var(--amber);
+      margin-bottom: 0.5rem;
+    }
+
+    .timeline-desc {
+      font-size: 14px;
+      color: var(--cream-dim);
+      line-height: 1.5;
+      margin: 0;
+    }
+
+    /* ─── REFERENCE ─── */
+    .reference-section {
+      background: var(--warm-dark);
+      max-width: 100%;
+      padding: 7rem 2rem;
+      border-top: 1px solid rgba(200, 136, 42, 0.1);
+    }
+
+    .reference-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .refs-grid {
+      display: flex;
+      gap: 2rem;
+      flex-wrap: wrap;
+      margin-top: 3rem;
+    }
+
+    .ref-tag {
+      font-family: 'Special Elite', monospace;
+      font-size: 12px;
+      letter-spacing: 0.15em;
+      color: var(--cream-dim);
+      border: 1px solid rgba(184,173,152,0.2);
+      padding: 0.6em 1.2em;
+      transition: all 0.3s;
+    }
+    .ref-tag span {
+      color: var(--amber);
+      margin-right: 0.5em;
+    }
+    .ref-tag:hover {
+      border-color: var(--amber-dim);
+      color: var(--cream);
+    }
+
+    /* ─── WISHLIST / CTA ─── */
+    .wishlist-section {
+      text-align: center;
+      padding: 8rem 2rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .wishlist-section::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at center, rgba(200,136,42,0.06) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .wishlist-section h2 {
+      margin: 0 auto 1.5rem;
+      max-width: 700px;
+    }
+
+    .wishlist-section p {
+      margin: 0 auto 3rem;
+      text-align: center;
+    }
+
+    /* ─── FOOTER ─── */
+    footer {
+      border-top: 1px solid rgba(200,136,42,0.1);
+      padding: 3rem 2rem;
+      text-align: center;
+    }
+
+    .footer-logo {
+      font-family: 'Playfair Display', serif;
+      font-style: italic;
+      font-size: 1.3rem;
+      color: var(--amber-dim);
+      margin-bottom: 1rem;
+    }
+
+    .footer-text {
+      font-family: 'Special Elite', monospace;
+      font-size: 10px;
+      letter-spacing: 0.25em;
+      color: rgba(184,173,152,0.4);
+      text-transform: uppercase;
+      line-height: 2;
+      margin: 0;
+      max-width: 100%;
+    }
+
+    /* ─── SCROLL REVEAL ─── */
+    .reveal {
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 0.8s ease, transform 0.8s ease;
+    }
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .reveal-delay-1 { transition-delay: 0.1s; }
+    .reveal-delay-2 { transition-delay: 0.2s; }
+    .reveal-delay-3 { transition-delay: 0.3s; }
+    .reveal-delay-4 { transition-delay: 0.4s; }
+
+    /* ─── TICKET STUB DECORATION ─── */
+    .ticket-stub {
+      display: inline-block;
+      border: 1px solid rgba(200,136,42,0.3);
+      padding: 1.5rem 2.5rem;
+      position: relative;
+      margin: 2rem 0;
+    }
+    .ticket-stub::before,
+    .ticket-stub::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 20px;
+      height: 20px;
+      background: var(--black);
+      border-radius: 50%;
+      border: 1px solid rgba(200,136,42,0.3);
+    }
+    .ticket-stub::before { left: -11px; }
+    .ticket-stub::after { right: -11px; }
+
+    .ticket-text {
+      font-family: 'Special Elite', monospace;
+      font-size: 11px;
+      letter-spacing: 0.3em;
+      color: var(--amber-dim);
+      text-transform: uppercase;
+    }
+
+    /* ─── NAV ─── */
+    nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      padding: 1.5rem 2.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: linear-gradient(to bottom, rgba(10,8,5,0.9), transparent);
+      backdrop-filter: blur(2px);
+    }
+
+    .nav-logo {
+      font-family: 'Playfair Display', serif;
+      font-style: italic;
+      font-size: 1.1rem;
+      color: var(--amber);
+      text-decoration: none;
+      letter-spacing: 0.05em;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 2rem;
+      list-style: none;
+    }
+
+    .nav-links a {
+      font-family: 'Special Elite', monospace;
+      font-size: 10px;
+      letter-spacing: 0.25em;
+      color: var(--cream-dim);
+      text-decoration: none;
+      text-transform: uppercase;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--amber); }
+
+    @media (max-width: 600px) {
+      .nav-links { display: none; }
+      .timeline { flex-direction: column; align-items: center; }
+      .timeline-item { border-left: none; border-top: 1px solid rgba(200,136,42,0.15); }
+      .timeline-item:first-child { border-top: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav>
+    <a href="#" class="nav-logo">The Last Show</a>
+    <ul class="nav-links">
+      <li><a href="#about">About</a></li>
+      <li><a href="#mechanics">Mechanics</a></li>
+      <li><a href="#wishlist">Wishlist</a></li>
+    </ul>
+  </nav>
+
+  <!-- HERO -->
+  <header>
+    <div class="film-perfs left">
+      <div class="perf"></div><div class="perf"></div><div class="perf"></div>
+      <div class="perf"></div><div class="perf"></div><div class="perf"></div>
+      <div class="perf"></div><div class="perf"></div><div class="perf"></div>
+      <div class="perf"></div><div class="perf"></div><div class="perf"></div>
+      <div class="perf"></div><div class="perf"></div><div class="perf"></div>
+    </div>
+    <div class="film-perfs right">
+      <div class="perf"></div><div class="perf"></div><div class="perf"></div>
+      <div class="perf"></div><div class="perf"></div><div class="perf"></div>
+      <div class="perf"></div><div class="perf"></div><div class="perf"></div>
+      <div class="perf"></div><div class="perf"></div><div class="perf"></div>
+      <div class="perf"></div><div class="perf"></div><div class="perf"></div>
+    </div>
+
+    <p class="studio-tag">BDS Studio &nbsp;·&nbsp; PC &nbsp;·&nbsp; Coming Soon</p>
+
+    <h1 class="hero-title">
+      <span>The</span>
+      Last Show
+    </h1>
+
+    <div class="hero-divider"></div>
+
+    <p class="hero-logline">
+      You are a substitute projectionist covering a late-night screening
+      at a dying 1950s movie theatre. The equipment is old and failing.
+      Something is in the building with you.<br>
+      <strong style="color: var(--cream);">Keep the movie running.</strong>
+    </p>
+
+    <div class="hero-meta">
+      <span class="meta-badge">Horror</span>
+      <span class="meta-badge">Job Simulator</span>
+      <span class="meta-badge">Roguelike</span>
+      <span class="meta-badge">PC — Steam</span>
+    </div>
+
+    <div class="cta-group">
+      <a href="#wishlist" class="btn btn-primary">Add to Wishlist</a>
+      <a href="#about" class="btn btn-secondary">Learn More</a>
+    </div>
+
+    <p class="scroll-hint">↓ &nbsp; Scroll</p>
+  </header>
+
+  <div class="divider"></div>
+
+  <!-- ABOUT -->
+  <section id="about">
+    <div class="about-grid">
+      <div>
+        <p class="section-label reveal">The Premise</p>
+        <h2 class="reveal reveal-delay-1">A job that <em>no longer exists.</em></h2>
+        <p class="reveal reveal-delay-2">
+          Operate a 35mm carbon arc projector in a dying independent cinema. Thread the reels.
+          Execute the changeovers. Manage failing equipment. Keep the audience from walking out.
+        </p>
+        <p class="reveal reveal-delay-3">
+          The horror is layered on top of a job that is already stressful. The monster does not
+          chase you — he sabotages the equipment at the worst possible moment. You are never
+          fighting the horror. You are trying to do your job while the horror makes that harder.
+        </p>
+        <p class="reveal reveal-delay-4" style="color: var(--cream); font-style: italic; font-size: 1.1em;">
+          That distinction is the game.
+        </p>
+      </div>
+      <div>
+        <p class="section-label reveal">The Tone</p>
+        <h2 class="reveal reveal-delay-1">Dread and dark <em>humour.</em></h2>
+        <p class="reveal reveal-delay-2">
+          An audience member delivering a full animated exit gesture on the way out because the
+          mood dropped too low is funny and humiliating simultaneously.
+        </p>
+        <p class="reveal reveal-delay-3">
+          Your character screaming at a jumpscare, then shakily lighting a cigarette, is human
+          and specific. The tone lives exactly where the best horror has always lived.
+        </p>
+        <div class="reveal reveal-delay-4">
+          <div class="ticket-stub">
+            <p class="ticket-text">Admit One &nbsp;·&nbsp; Late Night Screening &nbsp;·&nbsp; Seat Not Guaranteed</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- MECHANICS -->
+  <div class="mechanics-section" id="mechanics">
+    <div class="mechanics-inner">
+      <p class="section-label reveal">Core Systems</p>
+      <h2 class="reveal reveal-delay-1">The job is <em>the game.</em></h2>
+
+      <div class="mechanics-grid">
+        <div class="mechanic-card reveal reveal-delay-1">
+          <div class="mechanic-number">01</div>
+          <p class="mechanic-title">The Changeover</p>
+          <p class="mechanic-desc">Read the cigarette-burn cue marks through the port window. Thread the next reel. Pull the lever at exactly the right moment. Miss it and the movie stops. The audience notices.</p>
+        </div>
+        <div class="mechanic-card reveal reveal-delay-2">
+          <div class="mechanic-number">02</div>
+          <p class="mechanic-title">Heat Management</p>
+          <p class="mechanic-desc">The projectors run hot. The fan slows the rise. The thermometer tells you how close to a film burn you are. The monster accelerates it when you least need him to.</p>
+        </div>
+        <div class="mechanic-card reveal reveal-delay-3">
+          <div class="mechanic-number">03</div>
+          <p class="mechanic-title">The Audience</p>
+          <p class="mechanic-desc">Three hundred people below you. No UI. No meter. You read their mood through sound — murmuring, shuffling, complaints, footsteps toward the exit. Every walkout is permanent.</p>
+        </div>
+        <div class="mechanic-card reveal reveal-delay-1">
+          <div class="mechanic-number">04</div>
+          <p class="mechanic-title">The Monster</p>
+          <p class="mechanic-desc">He doesn't chase you. He watches. He interferes. He trips the breaker while the projector is already overheating. He plays the game against you. His goal is to empty the cinema.</p>
+        </div>
+        <div class="mechanic-card reveal reveal-delay-2">
+          <div class="mechanic-number">05</div>
+          <p class="mechanic-title">Splice Repair</p>
+          <p class="mechanic-desc">Bad reels break mid-show. The splicer bench is in the booth. Trim, align, seal. Do it fast enough and the audience barely notices. Do it slow and you'll hear the consequences.</p>
+        </div>
+        <div class="mechanic-card reveal reveal-delay-3">
+          <div class="mechanic-number">06</div>
+          <p class="mechanic-title">The Modifier System</p>
+          <p class="mechanic-desc">Every endless run draws from a pool of 30 modifiers. Unmarked Reels. No Flashlight. Early Arrival. Sold Out. No two nights are the same. Every run is a story worth telling.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CLOCK -->
+  <section class="clock-section" id="clock">
+    <p class="section-label reveal" style="justify-content: center;">The Structure</p>
+    <h2 class="reveal reveal-delay-1">Every run ends at <em>3am.</em></h2>
+    <p class="reveal reveal-delay-2" style="margin: 0 auto; text-align: center;">
+      The theatre closes. The final reel ends. Whatever has been in the building reaches its peak and stops.<br>
+      You are not trying to defeat it. You are trying to outlast it.
+    </p>
+
+    <div class="clock-display reveal reveal-delay-3">3:00</div>
+
+    <div class="timeline reveal reveal-delay-4">
+      <div class="timeline-item">
+        <p class="timeline-time">11pm — Reel 1</p>
+        <p class="timeline-desc">The screening begins. Equipment old but holding. Learn the job. Find the rhythm.</p>
+      </div>
+      <div class="timeline-item">
+        <p class="timeline-time">Midnight — Reel 2</p>
+        <p class="timeline-desc">Something shifts. Failures become more frequent. The first disruptions appear.</p>
+      </div>
+      <div class="timeline-item">
+        <p class="timeline-time">1am — Reel 3</p>
+        <p class="timeline-desc">Monster events begin in earnest. Three simultaneous concerns. Everything at once.</p>
+      </div>
+      <div class="timeline-item">
+        <p class="timeline-time">2am — Reel 4</p>
+        <p class="timeline-desc">Maximum pressure. Final changeover under the worst conditions of the night. Survive until 3.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- REFERENCES -->
+  <div class="reference-section">
+    <div class="reference-inner">
+      <p class="section-label reveal">Spiritual References</p>
+      <h2 class="reveal reveal-delay-1">Where it comes <em>from.</em></h2>
+      <p class="reveal reveal-delay-2">
+        Hitchcock's <em>Psycho</em> for atmosphere. <em>Papers Please</em> for mechanical philosophy.
+        <em>Balatro</em> for replayability design. <em>Phasmophobia</em> for proof that atmospheric
+        horror built on equipment interaction can find a massive audience.
+      </p>
+      <div class="refs-grid reveal reveal-delay-3">
+        <div class="ref-tag"><span>◆</span> Psycho (1960)</div>
+        <div class="ref-tag"><span>◆</span> Papers Please</div>
+        <div class="ref-tag"><span>◆</span> Balatro</div>
+        <div class="ref-tag"><span>◆</span> Phasmophobia</div>
+        <div class="ref-tag"><span>◆</span> Five Nights at Freddy's</div>
+        <div class="ref-tag"><span>◆</span> Overcooked</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- WISHLIST CTA -->
+  <section class="wishlist-section" id="wishlist">
+    <p class="section-label reveal" style="justify-content: center;">Coming to Steam</p>
+    <h2 class="reveal reveal-delay-1">Don't let the <em>last show</em> go dark.</h2>
+    <p class="reveal reveal-delay-2">
+      Wishlist on Steam to be notified at launch. Early Access coming 2027.
+    </p>
+    <div class="cta-group reveal reveal-delay-3">
+      <a href="https://store.steampowered.com" class="btn btn-primary" target="_blank">Wishlist on Steam</a>
+    </div>
+    <p class="reveal reveal-delay-4" style="margin-top: 2rem; font-size: 14px; font-family: 'Special Elite', monospace; letter-spacing: 0.15em; color: var(--amber-dim);">
+      Developed by 17939957 CANADA INC. &nbsp;·&nbsp; Burnaby, BC &nbsp;·&nbsp; Unity 6
+    </p>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <p class="footer-logo">The Last Show</p>
+    <p class="footer-text">
+      © 2026 17939957 Canada Inc. &nbsp;·&nbsp; BDS Studio &nbsp;·&nbsp; Burnaby, British Columbia<br>
+      ericblaida@gmail.com
+    </p>
+  </footer>
+
+  <script>
+    // Scroll reveal
+    const reveals = document.querySelectorAll('.reveal');
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+        }
+      });
+    }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+    reveals.forEach(el => observer.observe(el));
+
+    // Live clock
+    const clockEl = document.querySelector('.clock-display');
+    function updateClock() {
+      const now = new Date();
+      let h = now.getHours();
+      const m = String(now.getMinutes()).padStart(2, '0');
+      const ampm = h >= 12 ? 'am' : 'pm';
+      h = h % 12 || 12;
+      clockEl.textContent = `${h}:${m}`;
+    }
+    updateClock();
+    setInterval(updateClock, 1000);
+
+    // Random projector flicker on clock
+    setInterval(() => {
+      if (Math.random() > 0.92) {
+        clockEl.style.opacity = '0.3';
+        setTimeout(() => { clockEl.style.opacity = '1'; }, 80);
+      }
+    }, 2000);
+  </script>
+</body>
+</html>
